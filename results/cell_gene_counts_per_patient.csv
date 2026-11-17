@@ -1,0 +1,7 @@
+"sample","diagnosis","age","cells_unfiltered_droplets","cells_after_emptyDrops","cells_after_QC_miQC_minGenes200","macrophages_consensus","pct_macrophages","median_UMI_per_macrophage","median_genes_per_macrophage","genes_reference","genes_detected_in_macrophages","genes_detected_after_gene_filter","genes_in_panel_300","genes_in_panel_500","genes_in_panel_700","has_doublet_scores","doublet_cols","macrophages_called_doublet"
+"SCPCS000002","Glioblastoma",7,97492,1572,1015,321,31.6,2984,1045,60319,19710,15394,300,500,700,TRUE,"scDblFinder_class;scDblFinder_score",14
+"SCPCS000014","Glioblastoma",18,73024,1029,766,192,25.1,34381.5,6447.5,60319,22177,16683,300,500,700,TRUE,"scDblFinder_class;scDblFinder_score",7
+"SCPCS000016","Anaplastic astrocytoma",11,83769,3316,2794,818,29.3,8331.5,2592.5,60319,24531,17946,300,500,700,TRUE,"scDblFinder_class;scDblFinder_score",79
+"SCPCS000019","Glioblastoma",11,77795,1716,1558,199,12.8,11745,3362,60319,20291,15855,300,500,700,TRUE,"scDblFinder_class;scDblFinder_score",6
+"SCPCS000020","Glioblastoma",17,135378,619,411,144,35,23898.5,4735.5,60319,19976,15408,300,500,700,TRUE,"scDblFinder_class;scDblFinder_score",7
+"SCPCS000022","Glioblastoma",15,91235,729,452,190,42,32311,6148,60319,22425,16699,300,500,700,TRUE,"scDblFinder_class;scDblFinder_score",16

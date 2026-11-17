@@ -1,0 +1,4 @@
+"genes","n_comm_single","n_comm_joint","ARI_single_mean","ARI_single_min","ARI_single_max","ARI_joint_min","ARI_joint_max","heldout_joint_mean","heldout_member_mean","heldout_joint_wins"
+300,"3,5,5,3,5,4","2,3,4",0.148,0.001,0.405,0.186,0.347,0.18,0.158,3
+500,"3,3,4,3,3,3","2,3,2",0.237,0.084,0.423,0.427,0.557,0.314,0.246,8
+700,"3,3,4,3,3,2","2,2,2",0.228,0.115,0.389,0.641,0.717,0.334,0.232,9

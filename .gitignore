@@ -1,0 +1,14 @@
+# R session files
+.Rhistory
+.RData
+.Rproj.user/
+Rplots.pdf
+
+# OS / editor files
+.DS_Store
+.~lock*
+*.swp
+
+# Raw ScPCA data: download with R/01_download_data.R (ScPCA data-use terms apply)
+scpca_data_hgg6/
+*.tar.gz
