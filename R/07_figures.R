@@ -5,7 +5,8 @@
 #  3. results/networks/ari_heatmap_panel.{png,pdf}        community ARI, single + joint, 300/500/700
 #  4. results/networks/joint_networks_panel_3x3.{png,pdf} joint networks x gene-set size, communities
 #  5. results/networks/hub_venn_cutoffs.png               consensus hubs across gene-set sizes
-#  6. results/networks/hub_degree_robustness.{png,pdf}    top-15 degrees + degree vs expression (300)
+#  6. results/networks/hub_degree_robustness{,_top500,_top700,_panel}.{png,pdf}
+#                                                        top-15 degrees + degree vs expression (300/500/700)
 #  7. results/networks/edge_venn_joint{k}.png             edges shared across gene-set sizes
 #  8. results/networks/community_network_joint{k}_top700.png  communities of each 700-gene joint network
 
@@ -155,51 +156,60 @@ p5 <- ggVennDiagram(hub_sets, label = "count") +
   theme(legend.position = "none")
 ggsave("results/networks/hub_venn_cutoffs.png", p5, width = 7, height = 6, dpi = 300)
 
-# --- 6. Hub degree robustness (300 genes) -------------------------------------------------------
-N <- 300
-dex <- read.csv(sprintf("results/degree_expression_top%d.csv", N), check.names = FALSE)
-net_cols <- c(paste0("degree_", short(sample_ids)), paste0("degree_", joint_ids))
-net_lab  <- c(short(sample_ids), joint_ids)
-top <- dex$gene[dex$in_top15_figure == "yes"]
-dA <- dex[dex$gene %in% top, c("gene", net_cols)] %>%
-  pivot_longer(-gene, names_to = "net", values_to = "degree") %>%
-  mutate(x = factor(net_lab[match(net, net_cols)], net_lab), y = factor(gene, rev(top)),
-         frac = degree / (N - 1),
-         grp = factor(ifelse(grepl("joint", net), "Joint", "Single patient"), c("Single patient", "Joint")))
-pA <- ggplot(dA, aes(x, y)) +
-  geom_tile(aes(fill = frac), colour = "white", linewidth = 0.6) +
-  geom_text(aes(label = degree, colour = frac > 0.55), size = 2.8) +
-  scale_colour_manual(values = c(`TRUE` = "white", `FALSE` = "grey15"), guide = "none") +
-  scale_fill_gradient(low = col_heat[["low"]], high = col_heat[["high"]], limits = c(0, 1), labels = scales::percent,
-                      name = sprintf("Degree / max\n(%d)", N - 1)) +
-  facet_grid(. ~ grp, scales = "free_x", space = "free_x") +
-  labs(x = NULL, y = NULL) +
-  theme_minimal(base_size = 10) +
-  theme(panel.grid = element_blank(), panel.spacing = unit(7, "pt"),
-        strip.text = element_text(face = "bold", size = 9, colour = "grey25"),
-        axis.text.x = element_text(angle = 45, hjust = 1, size = 8.5),
-        axis.text.y = element_text(size = 8.5, face = "italic"),
-        legend.position = "bottom", legend.title = element_text(size = 8.5),
-        legend.key.width = unit(22, "pt"), legend.key.height = unit(8, "pt"))
+# --- 6. Hub degree robustness (300 / 500 / 700 genes) --------------------------------------------
+hub_degree_fig <- function(N, title = NULL) {
+  dex <- read.csv(sprintf("results/degree_expression_top%d.csv", N), check.names = FALSE)
+  net_cols <- c(paste0("degree_", short(sample_ids)), paste0("degree_", joint_ids))
+  net_lab  <- c(short(sample_ids), joint_ids)
+  top <- dex$gene[dex$in_top15_figure == "yes"]
+  dA <- dex[dex$gene %in% top, c("gene", net_cols)] %>%
+    pivot_longer(-gene, names_to = "net", values_to = "degree") %>%
+    mutate(x = factor(net_lab[match(net, net_cols)], net_lab), y = factor(gene, rev(top)),
+           frac = degree / (N - 1),
+           grp = factor(ifelse(grepl("joint", net), "Joint", "Single patient"), c("Single patient", "Joint")))
+  pA <- ggplot(dA, aes(x, y)) +
+    geom_tile(aes(fill = frac), colour = "white", linewidth = 0.6) +
+    geom_text(aes(label = degree, colour = frac > 0.55), size = 2.8) +
+    scale_colour_manual(values = c(`TRUE` = "white", `FALSE` = "grey15"), guide = "none") +
+    scale_fill_gradient(low = col_heat[["low"]], high = col_heat[["high"]], limits = c(0, 1), labels = scales::percent,
+                        name = sprintf("Degree / max\n(%d)", N - 1)) +
+    facet_grid(. ~ grp, scales = "free_x", space = "free_x") +
+    labs(x = NULL, y = NULL) +
+    theme_minimal(base_size = 10) +
+    theme(panel.grid = element_blank(), panel.spacing = unit(7, "pt"),
+          strip.text = element_text(face = "bold", size = 9, colour = "grey25"),
+          axis.text.x = element_text(angle = 45, hjust = 1, size = 8.5),
+          axis.text.y = element_text(size = 8.5, face = "italic"),
+          legend.position = "bottom", legend.title = element_text(size = 8.5),
+          legend.key.width = unit(22, "pt"), legend.key.height = unit(8, "pt"))
 
-dB <- dex[, c("gene", "mean_lognorm_expr", paste0("degree_", joint_ids))] %>%
-  pivot_longer(starts_with("degree_"), names_to = "joint", values_to = "degree") %>%
-  mutate(joint = sub("degree_", "", joint))
-rho <- dB %>% group_by(joint) %>% summarise(rho = cor(degree, mean_lognorm_expr, method = "spearman"))
-dB <- dB %>% mutate(panel = sprintf("%s  (Spearman ρ = %.2f)", joint, rho$rho[match(joint, rho$joint)]),
-                    hub = gene %in% top)
-pB <- ggplot(dB, aes(mean_lognorm_expr, degree)) +
-  geom_point(data = dB[!dB$hub, ], colour = "grey65", size = 1, alpha = 0.7) +
-  geom_point(data = dB[dB$hub, ], colour = "#c0392b", size = 1.6) +
-  geom_text_repel(data = dB[dB$gene %in% top[1:8], ], aes(label = gene), size = 2.6, fontface = "italic",
-                  min.segment.length = 0, segment.size = 0.25, max.overlaps = Inf, seed = 1) +
-  facet_wrap(~ panel, nrow = 1) +
-  scale_y_continuous(limits = c(0, N - 1)) +
-  labs(x = "Mean log-normalised expression (6 patients)", y = sprintf("Degree (top %d genes)", N)) +
-  theme_bw(base_size = 10) +
-  theme(panel.grid.minor = element_blank(), strip.background = element_rect(fill = "grey95", colour = NA),
-        strip.text = element_text(size = 9))
-save_fig(pA + pB + plot_layout(widths = c(1, 2.3)), "results/networks/hub_degree_robustness", 15, 5.6)
+  dB <- dex[, c("gene", "mean_lognorm_expr", paste0("degree_", joint_ids))] %>%
+    pivot_longer(starts_with("degree_"), names_to = "joint", values_to = "degree") %>%
+    mutate(joint = sub("degree_", "", joint))
+  rho <- dB %>% group_by(joint) %>% summarise(rho = cor(degree, mean_lognorm_expr, method = "spearman"))
+  dB <- dB %>% mutate(panel = sprintf("%s  (Spearman ρ = %.2f)", joint, rho$rho[match(joint, rho$joint)]),
+                      hub = gene %in% top)
+  pB <- ggplot(dB, aes(mean_lognorm_expr, degree)) +
+    geom_point(data = dB[!dB$hub, ], colour = "grey65", size = 1, alpha = 0.7) +
+    geom_point(data = dB[dB$hub, ], colour = "#c0392b", size = 1.6) +
+    geom_text_repel(data = dB[dB$gene %in% top[1:8], ], aes(label = gene), size = 2.6, fontface = "italic",
+                    min.segment.length = 0, segment.size = 0.25, max.overlaps = Inf, seed = 1) +
+    facet_wrap(~ panel, nrow = 1) +
+    scale_y_continuous(limits = c(0, N - 1)) +
+    labs(x = "Mean log-normalised expression (6 patients)", y = sprintf("Degree (top %d genes)", N)) +
+    theme_bw(base_size = 10) +
+    theme(panel.grid.minor = element_blank(), strip.background = element_rect(fill = "grey95", colour = NA),
+          strip.text = element_text(size = 9))
+  if (!is.null(title)) pA <- pA + labs(title = title) + theme(plot.title = element_text(face = "bold", size = 12))
+  pA + pB + plot_layout(widths = c(1, 2.3))
+}
+
+hub_figs <- lapply(setNames(cutoffs, cutoffs), hub_degree_fig)
+save_fig(hub_figs[["300"]], "results/networks/hub_degree_robustness", 15, 5.6)   # original 300-gene figure
+for (n in c(500, 700)) save_fig(hub_figs[[as.character(n)]], sprintf("results/networks/hub_degree_robustness_top%d", n), 15, 5.6)
+hub_panel <- wrap_plots(lapply(cutoffs, function(n) hub_degree_fig(n, sprintf("%s  %d genes", LETTERS[match(n, cutoffs)], n))), ncol = 1)
+save_fig(hub_panel, "results/networks/hub_degree_robustness_panel", 15, 17)
+
 
 # --- 7. Edge Venn diagrams per joint network --------------------------------------------------
 for (j in joint_ids) {

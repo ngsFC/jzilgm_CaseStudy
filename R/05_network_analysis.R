@@ -103,19 +103,21 @@ cat(sprintf("Hubs: %d distinct genes, %d hubs at all sizes\n", nrow(hub_tab),
 for (j in joint_ids) write.csv(data.frame(cutoff = cutoffs, n_edges = sapply(cutoffs, function(n) {
   a <- adj[[paste(j, n)]]; sum(a[upper.tri(a)] > 0) })), sprintf("results/edge_counts_%s.csv", j), row.names = FALSE)
 
-# --- 5. Degree vs expression (300 genes) ------------------------------------------------------
-N <- 300
-deg <- sapply(all_ids, function(id) degree_of(adj[[paste(id, N)]]))
-X <- readRDS(sprintf("data/macrophage_raw_top%d_list_dense_6pts.rds", N))
-mean_expr <- rowMeans(sapply(X, function(m) colMeans(lognorm(m))))[rownames(deg)]
-rk  <- apply(-deg, 2, rank, ties.method = "min")
-top <- names(sort(rowMeans(deg[, joint_ids]), decreasing = TRUE))[1:15]
-dex <- data.frame(gene = rownames(deg), mean_lognorm_expr = round(mean_expr, 3),
-                  expression_rank = rank(-mean_expr, ties.method = "min"), deg, check.names = FALSE)
-names(dex)[names(dex) %in% all_ids] <- paste0("degree_", ifelse(grepl("^joint", names(dex)[names(dex) %in% all_ids]),
-                                              names(dex)[names(dex) %in% all_ids], short(names(dex)[names(dex) %in% all_ids])))
-dex$degree_rank_min <- apply(rk, 1, min); dex$degree_rank_max <- apply(rk, 1, max)
-dex$in_top15_figure <- ifelse(dex$gene %in% top, "yes", "")
-dex <- dex[order(-rowMeans(deg[dex$gene, joint_ids])), ]
-write.csv(dex, sprintf("results/degree_expression_top%d.csv", N), row.names = FALSE)
-print(sapply(joint_ids, function(j) cor(deg[, j], mean_expr, method = "spearman")))
+# --- 5. Degree vs expression (300 / 500 / 700 genes) -----------------------------------------
+for (N in cutoffs) {
+  deg <- sapply(all_ids, function(id) degree_of(adj[[paste(id, N)]]))
+  X <- readRDS(sprintf("data/macrophage_raw_top%d_list_dense_6pts.rds", N))
+  mean_expr <- rowMeans(sapply(X, function(m) colMeans(lognorm(m))))[rownames(deg)]
+  rk  <- apply(-deg, 2, rank, ties.method = "min")
+  top <- names(sort(rowMeans(deg[, joint_ids]), decreasing = TRUE))[1:15]
+  dex <- data.frame(gene = rownames(deg), mean_lognorm_expr = round(mean_expr, 3),
+                    expression_rank = rank(-mean_expr, ties.method = "min"), deg, check.names = FALSE)
+  names(dex)[names(dex) %in% all_ids] <- paste0("degree_", ifelse(grepl("^joint", names(dex)[names(dex) %in% all_ids]),
+                                                names(dex)[names(dex) %in% all_ids], short(names(dex)[names(dex) %in% all_ids])))
+  dex$degree_rank_min <- apply(rk, 1, min); dex$degree_rank_max <- apply(rk, 1, max)
+  dex$in_top15_figure <- ifelse(dex$gene %in% top, "yes", "")
+  dex <- dex[order(-rowMeans(deg[dex$gene, joint_ids])), ]
+  write.csv(dex, sprintf("results/degree_expression_top%d.csv", N), row.names = FALSE)
+  cat(sprintf("Degree vs expression, %d genes (Spearman):\n", N))
+  print(sapply(all_ids, function(id) cor(deg[, id], mean_expr, method = "spearman")))
+}
