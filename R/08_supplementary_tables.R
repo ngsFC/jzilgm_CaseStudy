@@ -96,7 +96,7 @@ readme <- data.frame(Sheet = c("README", "Cell_gene_counts", "Degree_expression_
                                "Enrichment_summary", "Enrichment_significant", "Enrichment_all_tested"),
   Content = c(
     "Summary of the joint JZILGM networks of tumour-associated macrophages (6 pediatric HGG patients, ScPCA SCPCP000001). Joint networks: joint1 = SCPCS000014+019+022; joint2 = 016+020+022; joint3 = 002+014+020.",
-    "Cell and gene counts per patient at each filtering step. Cells: unfiltered droplets -> emptyDropsCellRanger -> miQC (prob. compromised > 0.75 removed) and >= 200 detected genes (ScPCA processed) -> ScPCA consensus 'macrophage' annotation. Genes: reference -> detected in >= 1 macrophage -> after removing genes without symbol, MALAT1, MT-, RPS/RPL, haemoglobin and X/Y-chromosome genes -> 300/500/700 panel (shared by all patients).",
+    "Cell and gene counts per patient at each filtering step. Cells: unfiltered droplets -> emptyDropsCellRanger -> miQC (prob. compromised > 0.75 removed) and >= 200 detected genes (ScPCA processed) -> ScPCA consensus 'macrophage' annotation. Genes: reference -> detected in >= 1 macrophage -> after removing genes without symbol, MALAT1, MT-, RPS/RPL, haemoglobin and X/Y-chromosome genes -> 300/500/700 panel (shared by all patients). M1/M2: each macrophage scored with Seurat AddModuleScore on genes upregulated in each state (Mantovani et al. 2002; M1: CD80, CD86, TNF, IL1B; M2: CD163, MRC1, MSR1, TGFB1); M1-dominant if M1 score > M2 score, M2-dominant otherwise. Composition differs between patients (chi-squared test on the 6 x 2 table, given below the table).",
     "Data behind the hub-degree figure (top 300 genes): for every gene, mean log-normalised expression (log1p of counts per 10,000 over the 300 genes, averaged over cells and the 6 patients), expression rank, degree in each single-patient (P002 = SCPCS000002, ...) and joint network (max 299), min/max degree rank across the 9 networks, and whether the gene is among the 15 shown in the figure. Spearman correlation between degree and expression per network is given below the table.",
     "Consensus hub genes: per gene-set size, genes ranked by degree in each joint network, rankings combined with Robust Rank Aggregation (RRA); top 30 = hubs. Lists all 33 genes that are hubs at any size, with degree in each joint network (700 genes) and mean degree at 300/500/700 genes.",
     "One row per Louvain community (igraph cluster_louvain, seed 123) for every joint network and gene-set size, including small communities and singletons. Module labels assigned by Jaccard overlap with the two consensus modules of the 700-gene networks. Enrichment counts refer to the 700-gene networks (FDR < 0.05).",
@@ -111,9 +111,18 @@ cg <- cg[, c("sample", "age", "cells_unfiltered_droplets", "cells_after_emptyDro
              "cells_after_QC_miQC_minGenes200", "macrophages_consensus", "median_UMI_per_macrophage",
              "median_genes_per_macrophage", "genes_reference", "genes_detected_in_macrophages",
              "genes_detected_after_gene_filter")]
+pol <- readRDS("data/polarization_df.rds")
+pol_n <- t(sapply(cg$sample, function(s) { d <- pol$diff[pol$sample_id == s]; c(sum(d > 0), sum(d < 0)) }))
+cg$macrophages_M1_dominant     <- pol_n[, 1]
+cg$macrophages_M2_dominant     <- pol_n[, 2]
+cg$pct_M1_dominant             <- round(100 * pol_n[, 1] / rowSums(pol_n), 1)
+cg$pct_M2_dominant             <- round(100 * pol_n[, 2] / rowSums(pol_n), 1)
+chi <- readRDS("results/macrophage_M1M2_composition_chisq.rds")
 tot <- cg[1, ]; tot[] <- NA; tot$sample <- "Total"
 for (k in c("cells_unfiltered_droplets", "cells_after_emptyDrops", "cells_after_QC_miQC_minGenes200",
-            "macrophages_consensus")) tot[[k]] <- sum(cg[[k]])
+            "macrophages_consensus", "macrophages_M1_dominant", "macrophages_M2_dominant")) tot[[k]] <- sum(cg[[k]])
+tot$pct_M1_dominant <- round(100 * tot$macrophages_M1_dominant / (tot$macrophages_M1_dominant + tot$macrophages_M2_dominant), 1)
+tot$pct_M2_dominant <- round(100 - tot$pct_M1_dominant, 1)
 cg <- rbind(cg, tot)
 
 dexp <- read.csv("results/degree_expression_top300.csv", check.names = FALSE)
@@ -135,6 +144,9 @@ add <- function(name, df, widths = NULL) {
 add("README", readme, c(24, 140))
 addStyle(wb, "README", createStyle(wrapText = TRUE, valign = "top"), rows = 2:(nrow(readme) + 1), cols = 2)
 add("Cell_gene_counts", cg)
+writeData(wb, "Cell_gene_counts", data.frame(test = "Chi-squared, M1/M2 composition across patients",
+          X_squared = round(unname(chi$statistic), 2), df = unname(chi$parameter),
+          p_value = signif(chi$p.value, 3)), startRow = nrow(cg) + 3, headerStyle = hs)
 add("Degree_expression_300", dexp)
 sp <- data.frame(network = colnames(degm), spearman_rho_degree_vs_expression =
                  round(sapply(colnames(degm), function(k) cor(degm[[k]], dexp$mean_lognorm_expr, method = "spearman")), 3))

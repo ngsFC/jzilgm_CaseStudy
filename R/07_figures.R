@@ -207,7 +207,7 @@ hub_degree_fig <- function(N, title = NULL) {
 hub_figs <- lapply(setNames(cutoffs, cutoffs), hub_degree_fig)
 save_fig(hub_figs[["300"]], "results/networks/hub_degree_robustness", 15, 5.6)   # original 300-gene figure
 for (n in c(500, 700)) save_fig(hub_figs[[as.character(n)]], sprintf("results/networks/hub_degree_robustness_top%d", n), 15, 5.6)
-hub_panel <- wrap_plots(lapply(cutoffs, function(n) hub_degree_fig(n, sprintf("%s  %d genes", LETTERS[match(n, cutoffs)], n))), ncol = 1)
+hub_panel <- wrap_plots(lapply(cutoffs, function(n) hub_degree_fig(n, sprintf("%d genes", n))), ncol = 1)
 save_fig(hub_panel, "results/networks/hub_degree_robustness_panel", 15, 17)
 
 
